@@ -15,11 +15,21 @@ function asBool(value, fallback = false) {
   return v === 'true' || v === '1' || v === 'on' || v === 'yes';
 }
 
+/** Normaliza a dígitos; si es 9 dígitos (Perú) antepone 51 para wa.me */
+function buildWhatsappUrl(numero) {
+  if (!numero) return null;
+  const digits = String(numero).replace(/\D/g, '');
+  if (!digits) return null;
+  const full = digits.length === 9 ? `51${digits}` : digits;
+  return `https://wa.me/${full}`;
+}
+
 function serializeConfiguracionPago(row, req) {
   if (!row) return null;
   const base = requestBaseUrl(req);
   const qrMedia = `${base}/api/pago/media/qr`;
   const muestraMedia = `${base}/api/pago/media/muestra`;
+  const whatsappCapturas = row.whatsappCapturas || null;
 
   return {
     id: row.id,
@@ -35,6 +45,9 @@ function serializeConfiguracionPago(row, req) {
     activo: row.activo,
     forzarActualizacion: Boolean(row.forzarActualizacion),
     playStoreUrl: row.playStoreUrl || null,
+    whatsappCapturas,
+    /** Enlace listo para abrir WhatsApp (recargas / envío de caps) */
+    whatsappUrl: buildWhatsappUrl(whatsappCapturas),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -65,6 +78,7 @@ async function upsertConfiguracionPago({
   activo = true,
   forzarActualizacion = false,
   playStoreUrl = null,
+  whatsappCapturas = null,
 }) {
   const num = String(numero || '').trim();
   const qr = String(imagenQrUrl || '').trim();
@@ -75,6 +89,10 @@ async function upsertConfiguracionPago({
   const store =
     playStoreUrl != null && String(playStoreUrl).trim() !== ''
       ? String(playStoreUrl).trim()
+      : null;
+  const wa =
+    whatsappCapturas != null && String(whatsappCapturas).trim() !== ''
+      ? String(whatsappCapturas).replace(/\D/g, '')
       : null;
 
   if (!num) {
@@ -98,6 +116,7 @@ async function upsertConfiguracionPago({
     activo: asBool(activo, true),
     forzarActualizacion: asBool(forzarActualizacion, false),
     playStoreUrl: store,
+    whatsappCapturas: wa,
   };
 
   if (existing) {
@@ -106,6 +125,9 @@ async function upsertConfiguracionPago({
     }
     if (store == null && existing.playStoreUrl) {
       data.playStoreUrl = existing.playStoreUrl;
+    }
+    if (wa == null && existing.whatsappCapturas) {
+      data.whatsappCapturas = existing.whatsappCapturas;
     }
     return prisma.configuracionPago.update({
       where: { id: existing.id },
@@ -122,4 +144,5 @@ module.exports = {
   getConfiguracionPago,
   upsertConfiguracionPago,
   asBool,
+  buildWhatsappUrl,
 };

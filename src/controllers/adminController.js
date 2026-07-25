@@ -119,6 +119,7 @@ async function savePago(req, res, next) {
       activo: body.activo !== false && body.activo !== 'false' && body.activo !== '0',
       forzarActualizacion: body.forzarActualizacion,
       playStoreUrl: body.playStoreUrl,
+      whatsappCapturas: body.whatsappCapturas,
     });
 
     return res.json({

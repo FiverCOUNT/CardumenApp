@@ -136,6 +136,8 @@ model ConfiguracionPago {
   forzarActualizacion Boolean @default(false) @map("forzar_actualizacion")
   /// Link de Play Store (o App Store)
   playStoreUrl  String?  @map("play_store_url") @db.VarChar(500)
+  /// Número WhatsApp donde se envían las capturas de recarga
+  whatsappCapturas String? @map("whatsapp_capturas") @db.VarChar(20)
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 

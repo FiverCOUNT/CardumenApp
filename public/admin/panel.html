@@ -22,6 +22,16 @@
           Número (Yape / Plin)
           <input name="numero" type="text" required maxlength="30" />
         </label>
+        <label>
+          WhatsApp (capturas de recarga)
+          <input
+            name="whatsappCapturas"
+            type="text"
+            maxlength="20"
+            placeholder="925117321"
+            value="925117321"
+          />
+        </label>
 
         <fieldset class="block">
           <legend>Imagen QR</legend>
@@ -143,6 +153,7 @@
       if (!p) return;
       const form = document.getElementById('pagoForm');
       form.numero.value = p.numero || '';
+      form.whatsappCapturas.value = p.whatsappCapturas || '925117321';
       form.titular.value = p.titular || '';
       form.metodo.value = p.metodo || 'yape';
       form.activo.checked = Boolean(p.activo);
@@ -204,6 +215,7 @@
       try {
         const fd = new FormData();
         fd.append('numero', form.numero.value.trim());
+        fd.append('whatsappCapturas', form.whatsappCapturas.value.trim());
         fd.append('titular', form.titular.value.trim());
         fd.append('metodo', form.metodo.value);
         fd.append('activo', form.activo.checked ? 'true' : 'false');
