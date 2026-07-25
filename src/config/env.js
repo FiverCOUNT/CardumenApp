@@ -32,6 +32,8 @@ module.exports = {
     password: process.env.ADMIN_PASSWORD || '',
   },
   jwtSecret: process.env.JWT_SECRET || 'dev-secret',
+  /** Solo true si sirves el admin por HTTPS */
+  cookieSecure: process.env.COOKIE_SECURE === 'true',
   s3: {
     /** Cloudflare R2 / S3 compatible endpoint */
     endpoint: process.env.S3_ENDPOINT || '',

@@ -73,6 +73,23 @@
           Activo
         </label>
 
+        <fieldset class="block">
+          <legend>Actualización forzada</legend>
+          <label class="check">
+            <input name="forzarActualizacion" type="checkbox" />
+            Forzar actualización (bloquea la app y manda a Play Store)
+          </label>
+          <label>
+            URL Play Store
+            <input
+              name="playStoreUrl"
+              type="url"
+              maxlength="500"
+              placeholder="https://play.google.com/store/apps/details?id=..."
+            />
+          </label>
+        </fieldset>
+
         <div class="previews">
           <div class="preview" id="previewQr" hidden>
             <p class="muted">Vista previa QR</p>
@@ -129,6 +146,8 @@
       form.titular.value = p.titular || '';
       form.metodo.value = p.metodo || 'yape';
       form.activo.checked = Boolean(p.activo);
+      form.forzarActualizacion.checked = Boolean(p.forzarActualizacion);
+      form.playStoreUrl.value = p.playStoreUrl || '';
       setPublicUrl('imagenQrUrl', 'urlQrLine', 'linkQr', p.imagenQrUrl);
       setPublicUrl('imagenMuestraUrl', 'urlMuestraLine', 'linkMuestra', p.imagenMuestraUrl);
       showPreview('previewQr', 'qrPreview', p.imagenQrUrl);
@@ -188,6 +207,10 @@
         fd.append('titular', form.titular.value.trim());
         fd.append('metodo', form.metodo.value);
         fd.append('activo', form.activo.checked ? 'true' : 'false');
+        fd.append('forzarActualizacion', form.forzarActualizacion.checked ? 'true' : 'false');
+        if (form.playStoreUrl.value.trim()) {
+          fd.append('playStoreUrl', form.playStoreUrl.value.trim());
+        }
         // No reenviar las URLs de preview/proxy: el backend conserva las keys
         if (form.qr.files?.[0]) fd.append('qr', form.qr.files[0]);
         if (form.muestra.files?.[0]) fd.append('muestra', form.muestra.files[0]);

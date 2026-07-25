@@ -10,7 +10,14 @@ const {
   serializeConfiguracionPago,
 } = require('../services/pagoService');
 const { uploadBuffer } = require('../services/s3Service');
-const { s3 } = require('../config/env');
+const { s3, cookieSecure } = require('../config/env');
+
+const cookieOptions = {
+  httpOnly: true,
+  sameSite: 'lax',
+  secure: cookieSecure,
+  path: '/',
+};
 
 async function login(req, res, next) {
   try {
@@ -21,11 +28,8 @@ async function login(req, res, next) {
 
     const token = await createAdminToken();
     res.cookie(COOKIE_NAME, token, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      ...cookieOptions,
       maxAge: 12 * 60 * 60 * 1000,
-      path: '/',
     });
 
     return res.json({ message: 'ok', user: String(username) });
@@ -35,7 +39,7 @@ async function login(req, res, next) {
 }
 
 function logout(req, res) {
-  res.clearCookie(COOKIE_NAME, { path: '/' });
+  res.clearCookie(COOKIE_NAME, cookieOptions);
   return res.json({ message: 'Sesión cerrada' });
 }
 
@@ -113,6 +117,8 @@ async function savePago(req, res, next) {
       titular: body.titular,
       metodo: body.metodo,
       activo: body.activo !== false && body.activo !== 'false' && body.activo !== '0',
+      forzarActualizacion: body.forzarActualizacion,
+      playStoreUrl: body.playStoreUrl,
     });
 
     return res.json({

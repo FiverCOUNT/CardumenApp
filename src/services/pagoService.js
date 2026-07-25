@@ -8,6 +8,13 @@ function requestBaseUrl(req) {
   return `${req.protocol}://${req.get('host')}`;
 }
 
+function asBool(value, fallback = false) {
+  if (value === undefined || value === null || value === '') return fallback;
+  if (typeof value === 'boolean') return value;
+  const v = String(value).toLowerCase();
+  return v === 'true' || v === '1' || v === 'on' || v === 'yes';
+}
+
 function serializeConfiguracionPago(row, req) {
   if (!row) return null;
   const base = requestBaseUrl(req);
@@ -26,6 +33,8 @@ function serializeConfiguracionPago(row, req) {
     titular: row.titular,
     metodo: row.metodo,
     activo: row.activo,
+    forzarActualizacion: Boolean(row.forzarActualizacion),
+    playStoreUrl: row.playStoreUrl || null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -46,7 +55,6 @@ async function getConfiguracionPago() {
 
 /**
  * Crea o actualiza la configuración de pago activa.
- * imagenQrUrl / imagenMuestraUrl pueden ser keys de R2 (ej. config/qr-....png).
  */
 async function upsertConfiguracionPago({
   numero,
@@ -55,12 +63,18 @@ async function upsertConfiguracionPago({
   titular = null,
   metodo = 'yape',
   activo = true,
+  forzarActualizacion = false,
+  playStoreUrl = null,
 }) {
   const num = String(numero || '').trim();
   const qr = String(imagenQrUrl || '').trim();
   const muestra =
     imagenMuestraUrl != null && String(imagenMuestraUrl).trim() !== ''
       ? String(imagenMuestraUrl).trim()
+      : null;
+  const store =
+    playStoreUrl != null && String(playStoreUrl).trim() !== ''
+      ? String(playStoreUrl).trim()
       : null;
 
   if (!num) {
@@ -81,12 +95,17 @@ async function upsertConfiguracionPago({
     imagenMuestraUrl: muestra,
     titular: titular != null ? String(titular).trim() || null : null,
     metodo: String(metodo || 'yape').trim() || 'yape',
-    activo: Boolean(activo),
+    activo: asBool(activo, true),
+    forzarActualizacion: asBool(forzarActualizacion, false),
+    playStoreUrl: store,
   };
 
   if (existing) {
     if (muestra == null && existing.imagenMuestraUrl) {
       data.imagenMuestraUrl = existing.imagenMuestraUrl;
+    }
+    if (store == null && existing.playStoreUrl) {
+      data.playStoreUrl = existing.playStoreUrl;
     }
     return prisma.configuracionPago.update({
       where: { id: existing.id },
@@ -102,4 +121,5 @@ module.exports = {
   getConfiguracionActiva,
   getConfiguracionPago,
   upsertConfiguracionPago,
+  asBool,
 };

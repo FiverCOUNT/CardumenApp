@@ -132,6 +132,10 @@ model ConfiguracionPago {
   /// yape | plin | transferencia | otro
   metodo        String   @default("yape") @db.VarChar(50)
   activo        Boolean  @default(true)
+  /// Si true, la app muestra modal forzando ir a Play Store
+  forzarActualizacion Boolean @default(false) @map("forzar_actualizacion")
+  /// Link de Play Store (o App Store)
+  playStoreUrl  String?  @map("play_store_url") @db.VarChar(500)
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
