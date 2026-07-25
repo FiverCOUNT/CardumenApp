@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cardumen Admin — Login</title>
+  <link rel="stylesheet" href="/admin/styles.css" />
+</head>
+<body class="auth-page">
+  <main class="card">
+    <h1>Cardumen</h1>
+    <p class="muted">Panel de administración</p>
+    <form id="loginForm">
+      <label>
+        Usuario
+        <input name="username" type="text" autocomplete="username" required />
+      </label>
+      <label>
+        Contraseña
+        <input name="password" type="password" autocomplete="current-password" required />
+      </label>
+      <button type="submit">Entrar</button>
+      <p id="error" class="error" hidden></p>
+    </form>
+  </main>
+  <script>
+    (async () => {
+      try {
+        const me = await fetch('/admin/api/me', { credentials: 'include' });
+        if (me.ok) location.href = '/admin/panel.html';
+      } catch (_) {}
+    })();
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const error = document.getElementById('error');
+      error.hidden = true;
+      const fd = new FormData(e.target);
+      const res = await fetch('/admin/api/login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: fd.get('username'),
+          password: fd.get('password'),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        error.textContent = data.error || 'No se pudo iniciar sesión';
+        error.hidden = false;
+        return;
+      }
+      location.href = '/admin/panel.html';
+    });
+  </script>
+</body>
+</html>

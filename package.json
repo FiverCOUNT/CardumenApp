@@ -1,0 +1,32 @@
+{
+  "name": "cardumen-backend",
+  "version": "1.0.0",
+  "description": "API básica con Node.js y Express",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1093.0",
+    "@prisma/adapter-mariadb": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jose": "^6.2.3",
+    "mariadb": "^3.5.3",
+    "multer": "^2.2.0",
+    "mysql2": "^3.23.0"
+  },
+  "devDependencies": {
+    "prisma": "^7.8.0"
+  }
+}

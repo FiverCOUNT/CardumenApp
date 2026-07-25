@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cardumen Admin — Pago</title>
+  <link rel="stylesheet" href="/admin/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <strong>Cardumen Admin</strong>
+    <button type="button" id="logoutBtn" class="ghost">Salir</button>
+  </header>
+
+  <main class="wrap">
+    <section class="card wide">
+      <h1>Configuración de pago</h1>
+      <p class="muted">Sube QR / muestra. Al guardar se sirven por el backend.</p>
+
+      <form id="pagoForm">
+        <label>
+          Número (Yape / Plin)
+          <input name="numero" type="text" required maxlength="30" />
+        </label>
+
+        <fieldset class="block">
+          <legend>Imagen QR</legend>
+          <label>
+            Subir archivo
+            <input name="qr" type="file" accept="image/*" />
+          </label>
+          <label>
+            URL para la app
+            <input name="imagenQrUrl" type="text" maxlength="500" readonly placeholder="Se llena al guardar" />
+          </label>
+          <p class="url-line" id="urlQrLine" hidden>
+            <a id="linkQr" href="#" target="_blank" rel="noopener">Abrir QR</a>
+            <button type="button" class="ghost tiny" data-copy="imagenQrUrl">Copiar</button>
+          </p>
+        </fieldset>
+
+        <fieldset class="block">
+          <legend>Imagen de muestra</legend>
+          <label>
+            Subir archivo
+            <input name="muestra" type="file" accept="image/*" />
+          </label>
+          <label>
+            URL para la app
+            <input name="imagenMuestraUrl" type="text" maxlength="500" readonly placeholder="Se llena al guardar" />
+          </label>
+          <p class="url-line" id="urlMuestraLine" hidden>
+            <a id="linkMuestra" href="#" target="_blank" rel="noopener">Abrir muestra</a>
+            <button type="button" class="ghost tiny" data-copy="imagenMuestraUrl">Copiar</button>
+          </p>
+        </fieldset>
+
+        <label>
+          Titular
+          <input name="titular" type="text" maxlength="150" />
+        </label>
+        <label>
+          Método
+          <select name="metodo">
+            <option value="yape">Yape</option>
+            <option value="plin">Plin</option>
+            <option value="transferencia">Transferencia</option>
+            <option value="otro">Otro</option>
+          </select>
+        </label>
+        <label class="check">
+          <input name="activo" type="checkbox" checked />
+          Activo
+        </label>
+
+        <div class="previews">
+          <div class="preview" id="previewQr" hidden>
+            <p class="muted">Vista previa QR</p>
+            <img id="qrPreview" alt="QR de pago" />
+          </div>
+          <div class="preview" id="previewMuestra" hidden>
+            <p class="muted">Vista previa muestra</p>
+            <img id="muestraPreview" alt="Imagen de muestra" />
+          </div>
+        </div>
+
+        <button type="submit" id="saveBtn">Guardar</button>
+        <p id="msg" class="ok" hidden></p>
+        <p id="error" class="error" hidden></p>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    async function ensureAuth() {
+      const res = await fetch('/admin/api/me', { credentials: 'include' });
+      if (!res.ok) location.href = '/admin/';
+    }
+
+    function showPreview(boxId, imgId, url) {
+      const box = document.getElementById(boxId);
+      const img = document.getElementById(imgId);
+      if (url) {
+        img.src = url + (url.includes('?') ? '&' : '?') + 't=' + Date.now();
+        box.hidden = false;
+      } else {
+        box.hidden = true;
+      }
+    }
+
+    function setPublicUrl(inputName, lineId, linkId, url) {
+      const form = document.getElementById('pagoForm');
+      form[inputName].value = url || '';
+      const line = document.getElementById(lineId);
+      const link = document.getElementById(linkId);
+      if (url) {
+        link.href = url;
+        link.textContent = url;
+        line.hidden = false;
+      } else {
+        line.hidden = true;
+      }
+    }
+
+    function applyPago(p) {
+      if (!p) return;
+      const form = document.getElementById('pagoForm');
+      form.numero.value = p.numero || '';
+      form.titular.value = p.titular || '';
+      form.metodo.value = p.metodo || 'yape';
+      form.activo.checked = Boolean(p.activo);
+      setPublicUrl('imagenQrUrl', 'urlQrLine', 'linkQr', p.imagenQrUrl);
+      setPublicUrl('imagenMuestraUrl', 'urlMuestraLine', 'linkMuestra', p.imagenMuestraUrl);
+      showPreview('previewQr', 'qrPreview', p.imagenQrUrl);
+      showPreview('previewMuestra', 'muestraPreview', p.imagenMuestraUrl);
+    }
+
+    async function loadPago() {
+      const res = await fetch('/admin/api/pago', { credentials: 'include' });
+      if (res.status === 401) return (location.href = '/admin/');
+      const data = await res.json();
+      applyPago(data.pago);
+    }
+
+    const formEl = document.getElementById('pagoForm');
+    const saveBtn = document.getElementById('saveBtn');
+
+    formEl.qr.addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      if (file) showPreview('previewQr', 'qrPreview', URL.createObjectURL(file));
+    });
+    formEl.muestra.addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      if (file) showPreview('previewMuestra', 'muestraPreview', URL.createObjectURL(file));
+    });
+
+    document.querySelectorAll('[data-copy]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const name = btn.getAttribute('data-copy');
+        const val = formEl[name].value;
+        if (!val) return;
+        await navigator.clipboard.writeText(val);
+        btn.textContent = 'Copiado';
+        setTimeout(() => (btn.textContent = 'Copiar'), 1200);
+      });
+    });
+
+    formEl.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('msg');
+      const error = document.getElementById('error');
+      msg.hidden = true;
+      error.hidden = true;
+
+      const form = e.target;
+      if (!form.numero.value.trim()) {
+        error.textContent = 'El número es requerido';
+        error.hidden = false;
+        return;
+      }
+
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Guardando...';
+
+      try {
+        const fd = new FormData();
+        fd.append('numero', form.numero.value.trim());
+        fd.append('titular', form.titular.value.trim());
+        fd.append('metodo', form.metodo.value);
+        fd.append('activo', form.activo.checked ? 'true' : 'false');
+        // No reenviar las URLs de preview/proxy: el backend conserva las keys
+        if (form.qr.files?.[0]) fd.append('qr', form.qr.files[0]);
+        if (form.muestra.files?.[0]) fd.append('muestra', form.muestra.files[0]);
+
+        const res = await fetch('/admin/api/pago', {
+          method: 'PUT',
+          credentials: 'include',
+          body: fd,
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (res.status === 401) {
+          location.href = '/admin/';
+          return;
+        }
+        if (!res.ok) {
+          error.textContent = data.error || 'No se pudo guardar';
+          error.hidden = false;
+          return;
+        }
+
+        msg.textContent = data.message || 'Guardado correctamente';
+        msg.hidden = false;
+        form.qr.value = '';
+        form.muestra.value = '';
+        applyPago(data.pago);
+      } catch (err) {
+        error.textContent = err.message || 'Error de red al guardar';
+        error.hidden = false;
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Guardar';
+      }
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await fetch('/admin/api/logout', { method: 'POST', credentials: 'include' });
+      location.href = '/admin/';
+    });
+
+    ensureAuth().then(loadPago);
+  </script>
+</body>
+</html>

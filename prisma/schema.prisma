@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+/// Usuario autenticado con Firebase Auth + datos personales
+model Usuario {
+  id               String   @id @default(cuid())
+  firebaseUid      String   @unique @map("firebase_uid") @db.VarChar(191)
+  email            String   @unique @db.VarChar(191)
+  emailVerificado  Boolean  @default(false) @map("email_verificado")
+  nombresCompletos String   @map("nombres_completos") @db.VarChar(255)
+  fotoUrl          String?  @map("foto_url") @db.VarChar(500)
+  dni              String?  @unique @db.VarChar(20)
+  telefono         String?  @db.VarChar(20)
+  /// Saldo disponible en soles (solo de recargas no expiradas)
+  saldoSoles       Decimal  @default(0) @map("saldo_soles") @db.Decimal(12, 2)
+  /// Hasta cuándo tiene saldo vigente (max expires_at de recargas activas)
+  saldoVigenteHasta DateTime? @map("saldo_vigente_hasta")
+  /// Distancia mínima (metros) para alertar cercanía de cardúmenes
+  distanciaAlertaMetros Int @default(400) @map("distancia_alerta_metros")
+  activo           Boolean  @default(true)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  dispositivos Dispositivo[]
+  ubicaciones  Ubicacion[]
+  recargas     Recarga[]
+
+  @@map("usuarios")
+}
+
+/// Dispositivo físico. deviceUid identifica de forma única el teléfono
+/// para detectar si otra cuenta intenta entrar en el mismo equipo.
+model Dispositivo {
+  id                String   @id @default(cuid())
+  usuarioId         String   @map("usuario_id")
+  /// UUID persistente generado por la app (Keychain / Keystore). Único global.
+  deviceUid         String   @unique @map("device_uid") @db.VarChar(191)
+  /// Hash estable del hardware (fallback / refuerzo anti-spoof).
+  fingerprint       String?  @unique @db.VarChar(191)
+  /// Android ID o iOS identifierForVendor
+  platformDeviceId  String?  @map("platform_device_id") @db.VarChar(191)
+  plataforma        String   @db.VarChar(20)
+  marca             String?  @db.VarChar(100)
+  modelo            String?  @db.VarChar(100)
+  sistemaOperativo  String?  @map("sistema_operativo") @db.VarChar(50)
+  versionApp        String?  @map("version_app") @db.VarChar(30)
+  pushToken         String?  @map("push_token") @db.VarChar(500)
+  ultimoAcceso      DateTime @default(now()) @map("ultimo_acceso")
+  activo            Boolean  @default(true)
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([platformDeviceId])
+  @@map("dispositivos")
+}
+
+/// Punto marcado en el mapa. Visible para otros usuarios hasta expires_at (5h).
+model Ubicacion {
+  id          String   @id @default(cuid())
+  usuarioId   String   @map("usuario_id")
+  latitud     Decimal  @db.Decimal(10, 7)
+  longitud    Decimal  @db.Decimal(10, 7)
+  titulo      String?  @db.VarChar(150)
+  descripcion String?  @db.VarChar(500)
+  /// created_at + 5 horas (se calcula en el backend al crear)
+  expiresAt   DateTime @map("expires_at")
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([expiresAt])
+  @@index([latitud, longitud])
+  @@map("ubicaciones")
+}
+
+/// Recarga de soles/tokens. Cada recarga vence a los 7 días (1 semana).
+model Recarga {
+  id            String   @id @default(cuid())
+  usuarioId     String   @map("usuario_id")
+  /// DNI del usuario (dato del voucher; se usa para localizar al usuario)
+  dni           String   @db.VarChar(20)
+  /// Monto recargado en soles (igual a monto_pago acreditado)
+  monto         Decimal  @db.Decimal(12, 2)
+  montoPago     Decimal  @map("monto_pago") @db.Decimal(12, 2)
+  /// Fecha del pago según el voucher / n8n
+  fechaPago     DateTime? @map("fecha_pago")
+  destino       String?  @db.VarChar(150)
+  codigoSeguridad String? @map("codigo_seguridad") @db.VarChar(50)
+  numeroOperacion String? @unique @map("numero_operacion") @db.VarChar(100)
+  /// Lo que aún no se ha gastado de esta recarga
+  montoRestante Decimal  @map("monto_restante") @db.Decimal(12, 2)
+  /// created_at + 7 días
+  expiresAt     DateTime @map("expires_at")
+  /// pendiente | completada | expirada | cancelada
+  estado        String   @default("completada") @db.VarChar(20)
+  metodoPago    String?  @map("metodo_pago") @db.VarChar(50)
+  referencia    String?  @db.VarChar(191)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([dni])
+  @@index([expiresAt])
+  @@index([estado])
+  @@map("recargas")
+}
+
+/// Datos de pago para que el usuario escanee el QR y pague.
+model ConfiguracionPago {
+  id            String   @id @default(cuid())
+  /// Número de Yape / Plin / cuenta
+  numero        String   @db.VarChar(30)
+  /// URL de la imagen del QR (la app la muestra para escanear)
+  imagenQrUrl   String   @map("imagen_qr_url") @db.VarChar(500)
+  /// Imagen de muestra / ejemplo de voucher o captura
+  imagenMuestraUrl String? @map("imagen_muestra_url") @db.VarChar(500)
+  /// Titular o nombre a mostrar (opcional)
+  titular       String?  @db.VarChar(150)
+  /// yape | plin | transferencia | otro
+  metodo        String   @default("yape") @db.VarChar(50)
+  activo        Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([activo])
+  @@map("configuracion_pago")
+}
